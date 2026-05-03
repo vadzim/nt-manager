@@ -1,6 +1,6 @@
 #!/usr/bin/env fish
 
-set -g NT_HOME  $HOME/.local/nt
+set -g NT_HOME  (test -n "$NT_HOME"; and echo $NT_HOME; or echo $HOME/.local/nt)
 set -g NT_NODES $NT_HOME/node
 set -g NT_TOOLS $NT_HOME/tools
 set -g NT_BIN   $NT_HOME/bin

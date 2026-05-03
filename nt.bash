@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-NT_HOME="${HOME}/.local/nt"
+NT_HOME="${NT_HOME:-${HOME}/.local/nt}"
 NT_NODES="${NT_HOME}/node"
 NT_TOOLS="${NT_HOME}/tools"
 NT_BIN="${NT_HOME}/bin"

@@ -109,7 +109,26 @@ nt list
 
 # Update everything
 nt update
+
+# Use custom installation directory
+NT_HOME=/opt/myproject/nt nt install typescript
 ```
+
+## Testing
+
+Run the test suite to verify everything works:
+
+```bash
+# Bash version
+cd tests
+./test.bash
+
+# Fish version
+cd tests
+./test.fish
+```
+
+See [tests/README.md](tests/README.md) for details.
 
 ## License
 
