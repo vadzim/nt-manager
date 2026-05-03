@@ -11,6 +11,8 @@ Install global npm packages and pin them to specific Node.js versions.
 
 ## Installation
 
+**Quick install:**
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/vadzim/nt-manager/main/nt-install.sh | bash
 ```
@@ -20,6 +22,17 @@ Then add to your shell profile (if not already in PATH):
 ```bash
 export PATH="$HOME/.local/nt/bin:$PATH"
 ```
+
+**Manual install:**
+
+Download the script and put it in your PATH:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/vadzim/nt-manager/main/nt -o ~/.local/bin/nt
+chmod +x ~/.local/bin/nt
+```
+
+Make sure `~/.local/bin` is in your PATH.
 
 ## Usage
 
