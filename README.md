@@ -1,12 +1,10 @@
 # nt — Node.js Tool Manager
 
-A lightweight Node.js package manager that isolates tools with their own Node.js versions.
+Install global npm packages and pin them to specific Node.js versions.
 
 ## Why?
 
-- **Version pinning**: Lock tools to specific Node.js versions
-- **Zero dependencies**: No Node.js required on your system
-- **Isolated Node versions**: Each tool gets its own Node.js version
+- **Version pinning**: Lock tools to specific Node.js versions if you need
 - **No global pollution**: Tools are installed in `~/.local/nt/`
 - **Simple**: Single Bash script, downloads what it needs
 
