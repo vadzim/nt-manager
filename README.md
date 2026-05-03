@@ -7,7 +7,8 @@ A lightweight Node.js package manager that isolates tools with their own Node.js
 - **Isolated Node versions**: Each tool gets its own Node.js version
 - **No global pollution**: Tools are installed in `~/.local/nt/`
 - **Version pinning**: Lock tools to specific Node.js versions
-- **Simple**: Just a Fish shell script, no dependencies
+- **Simple**: Shell script (Fish or Bash), no dependencies
+- **Cross-shell**: Works with Fish, Bash, and Zsh
 
 ## Installation
 
@@ -16,13 +17,16 @@ A lightweight Node.js package manager that isolates tools with their own Node.js
 git clone https://github.com/vadzim/nt-manager.git
 cd nt-manager
 
-# Make it executable
+# Choose your shell version
+# For Fish shell:
 chmod +x nt
-
-# Add to PATH (Fish shell)
-mkdir -p ~/.bin
 ln -s $(pwd)/nt ~/.bin/nt
 fish_add_path ~/.bin
+
+# For Bash/Zsh:
+chmod +x nt.bash
+ln -s $(pwd)/nt.bash ~/.bin/nt
+echo 'export PATH="$HOME/.bin:$PATH"' >> ~/.bashrc  # or ~/.zshrc
 ```
 
 ## Usage
@@ -75,7 +79,7 @@ nt remove typescript
 
 ## Requirements
 
-- Fish shell
+- Bash 4.0+ or Fish shell
 - `npx` (comes with Node.js)
 - Internet connection for initial setup
 
