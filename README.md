@@ -45,7 +45,7 @@ nt install --node=18 vite        # vite pinned to Node.js 18
 nt install --node=20 @angular/cli # @angular/cli pinned to Node.js 20
 
 # Install specific package version (still pinned to Node.js version)
-nt install typescript@5.0.0           # typescript@5.0.0 pinned to latest LTS
+nt install typescript@5.0.0           # typescript@5.0.0 with internal LTS
 nt install --node=18 vite@4.0.0       # vite@4.0.0 pinned to Node.js 18
 
 # List installed tools
@@ -63,7 +63,7 @@ nt remove typescript
 
 **Important:** 
 - Each tool always uses its pinned Node.js version, regardless of what's on your PATH
-- Tools without `--node` use the latest LTS
+- Tools without `--node` use the internal LTS (currently 24.x)
 - Use `nvm use` or `fnm use` for development — your global tools won't break
 
 ## Requirements
@@ -91,7 +91,7 @@ nt install --node=20 typescript
 # Check what's installed
 nt list
 # Output:
-#   typescript  pkg: typescript@latest  node: lts
+#   typescript  pkg: typescript@latest  node: internal
 #   vite        pkg: vite@latest        node: 20
 ```
 
