@@ -17,6 +17,16 @@ NT_TOOLS="${NT_HOME}/tools"
 NT_BIN="${NT_HOME}/bin"
 NT_INTERNAL="${NT_HOME}/.internal"
 
+# Detect download tool
+if command -v curl >/dev/null 2>&1; then
+    DOWNLOAD_CMD="curl -fsSL"
+elif command -v wget >/dev/null 2>&1; then
+    DOWNLOAD_CMD="wget -qO-"
+else
+    echo "nt: curl or wget is required"
+    exit 1
+fi
+
 __nt_parse_pkg_spec() {
     local spec="$1"
     local pkg_name pkg_ver dir_name
@@ -77,7 +87,7 @@ __nt_ensure_bootstrap_node() {
         
         # Get latest LTS version
         local lts_version
-        lts_version=$(curl -fsSL "https://nodejs.org/dist/index.json" | grep -oP '"version":"v\K[^"]+' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+        lts_version=$($DOWNLOAD_CMD "https://nodejs.org/dist/index.json" | grep -oP '"version":"v\K[^"]+' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
         
         if [[ -z "$lts_version" ]]; then
             if [[ -x "$bootstrap_bin" ]]; then
@@ -127,7 +137,7 @@ __nt_ensure_bootstrap_node() {
         local temp_dir
         temp_dir=$(mktemp -d)
         
-        if ! curl -fsSL "$node_url" | tar -xJ -C "$temp_dir" --strip-components=1; then
+        if ! $DOWNLOAD_CMD "$node_url" | tar -xJ -C "$temp_dir" --strip-components=1; then
             echo "nt: failed to download or extract bootstrap Node.js"
             rm -rf "$temp_dir"
             return 1

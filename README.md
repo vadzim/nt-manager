@@ -79,7 +79,7 @@ nt remove typescript
 ## Requirements
 
 - Bash 4.0+
-- `curl` (for downloading Node.js and packages)
+- `curl` or `wget` (for downloading Node.js and packages)
 - `tar` with xz support
 - Internet connection
 

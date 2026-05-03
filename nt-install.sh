@@ -15,12 +15,22 @@ echo ""
 echo "Installing to: ${INSTALL_DIR}"
 echo ""
 
+# Detect download tool
+if command -v curl >/dev/null 2>&1; then
+    DOWNLOAD_CMD="curl -fsSL"
+elif command -v wget >/dev/null 2>&1; then
+    DOWNLOAD_CMD="wget -qO-"
+else
+    echo "✗ curl or wget is required"
+    exit 1
+fi
+
 # Create directories
 mkdir -p "${BIN_DIR}"
 
 # Download nt script
 echo "→ downloading nt script..."
-if ! curl -fsSL "${SCRIPT_URL}" -o "${BIN_DIR}/nt"; then
+if ! $DOWNLOAD_CMD "${SCRIPT_URL}" > "${BIN_DIR}/nt"; then
     echo "✗ failed to download nt script"
     exit 1
 fi
