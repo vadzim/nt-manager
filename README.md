@@ -45,7 +45,10 @@ nt update
 nt remove typescript
 ```
 
-**Important:** Each tool always uses its pinned Node.js version, regardless of what's on your PATH. Tools without `--node` use the latest LTS (bootstrap node).
+**Important:** 
+- Each tool always uses its pinned Node.js version, regardless of what's on your PATH
+- Tools without `--node` use the latest LTS (bootstrap node)
+- Use `nvm use` or `fnm use` for development — your global tools won't break
 
 ## How it works
 
