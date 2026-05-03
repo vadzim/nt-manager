@@ -9,7 +9,6 @@ A lightweight Node.js package manager that isolates tools with their own Node.js
 - **No global pollution**: Tools are installed in `~/.local/nt/`
 - **Version pinning**: Lock tools to specific Node.js versions
 - **Simple**: Single Bash script, downloads what it needs
-- **Auto-updates**: Bootstrap Node.js (LTS) updates automatically
 
 ## Installation
 
@@ -53,7 +52,6 @@ nt remove typescript
 2. **Node.js isolation**: Uses bootstrap npm to install specific Node.js versions via `npm install node@X`
 3. **Package installation**: Installs npm packages in `~/.local/nt/tools/<package>/`
 4. **Wrapper scripts**: Creates executable wrappers in `~/.local/nt/bin/` that set up the correct Node.js version
-5. **Auto-updates**: Bootstrap Node.js checks for LTS updates daily
 
 ## Directory structure
 
