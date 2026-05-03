@@ -24,7 +24,7 @@ export PATH="$HOME/.local/nt/bin:$PATH"
 ## Usage
 
 ```bash
-# Install a tool (pinned to bootstrap LTS Node.js)
+# Install a tool (pinned to latest LTS Node.js)
 nt install typescript
 
 # Pin a tool to specific Node.js version
@@ -32,7 +32,7 @@ nt install --node=18 vite        # vite pinned to Node.js 18
 nt install --node=20 @angular/cli # @angular/cli pinned to Node.js 20
 
 # Install specific package version (still pinned to Node.js version)
-nt install typescript@5.0.0           # typescript@5.0.0 pinned to bootstrap LTS
+nt install typescript@5.0.0           # typescript@5.0.0 pinned to latest LTS
 nt install --node=18 vite@4.0.0       # vite@4.0.0 pinned to Node.js 18
 
 # List installed tools
@@ -47,22 +47,22 @@ nt remove typescript
 
 **Important:** 
 - Each tool always uses its pinned Node.js version, regardless of what's on your PATH
-- Tools without `--node` use the latest LTS (bootstrap node)
+- Tools without `--node` use the latest LTS
 - Use `nvm use` or `fnm use` for development — your global tools won't break
 
 ## How it works
 
-1. **Bootstrap**: Downloads LTS Node.js directly from nodejs.org (no system Node.js needed!)
-2. **Node.js isolation**: Uses bootstrap npm to install specific Node.js versions via `npm install node@X`
-3. **Package installation**: Installs npm packages in `~/.local/nt/tools/<package>/`
-4. **Wrapper scripts**: Creates executable wrappers in `~/.local/nt/bin/` that set up the correct Node.js version
+1. Downloads LTS Node.js directly from nodejs.org (no system Node.js needed!)
+2. Uses npm to install specific Node.js versions via `npm install node@X`
+3. Installs npm packages in `~/.local/nt/tools/<package>/`
+4. Creates executable wrappers in `~/.local/nt/bin/` that set up the correct Node.js version
 
 ## Directory structure
 
 ```
 ~/.local/nt/
 ├── .internal/
-│   └── node/           # Bootstrap Node.js (LTS, auto-updated)
+│   └── node/           # LTS Node.js (auto-updated)
 ├── bin/
 │   ├── tsc             # Executable wrappers
 │   ├── vite
@@ -101,7 +101,7 @@ nt install --node=20 typescript
 # Check what's installed
 nt list
 # Output:
-#   typescript  pkg: typescript@latest  node: bootstrap
+#   typescript  pkg: typescript@latest  node: lts
 #   vite        pkg: vite@latest        node: 20
 ```
 
