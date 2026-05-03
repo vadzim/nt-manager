@@ -23,10 +23,10 @@ export PATH="$HOME/.local/nt/bin:$PATH"
 ## Usage
 
 ```bash
-# Install a tool (uses bootstrap LTS Node.js)
+# Install a tool (uses bootstrap LTS Node.js, auto-updates)
 nt install typescript
 
-# Install with specific Node.js version
+# Pin a tool to specific Node.js version
 nt install --node=18 vite
 nt install --node=20 @angular/cli
 
@@ -43,6 +43,8 @@ nt update
 # Remove a tool
 nt remove typescript
 ```
+
+**Important:** Each tool always uses its pinned Node.js version, regardless of what's on your PATH. Tools without `--node` use the latest LTS (bootstrap node).
 
 ## How it works
 
