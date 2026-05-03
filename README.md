@@ -4,10 +4,10 @@ A lightweight Node.js package manager that isolates tools with their own Node.js
 
 ## Why?
 
+- **Version pinning**: Lock tools to specific Node.js versions
 - **Zero dependencies**: No Node.js required on your system
 - **Isolated Node versions**: Each tool gets its own Node.js version
 - **No global pollution**: Tools are installed in `~/.local/nt/`
-- **Version pinning**: Lock tools to specific Node.js versions
 - **Simple**: Single Bash script, downloads what it needs
 
 ## Installation
