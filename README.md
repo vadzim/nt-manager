@@ -5,6 +5,7 @@ Install global npm packages and pin them to specific Node.js versions.
 ## Why?
 
 - **Version pinning**: Lock tools to specific Node.js versions if you need
+- **Independent from nvm/fnm**: Switch Node.js versions for development without breaking global tools
 - **No global pollution**: Tools are installed in `~/.local/nt/`
 - **Simple**: Single Bash script, downloads what it needs
 
