@@ -9,25 +9,24 @@ A lightweight Node.js package manager that isolates tools with their own Node.js
 - **No global pollution**: Tools are installed in `~/.local/nt/`
 - **Version pinning**: Lock tools to specific Node.js versions
 - **Simple**: Single Bash script, downloads what it needs
+- **Auto-updates**: Bootstrap Node.js (LTS) updates automatically
 
 ## Installation
 
 ```bash
-# Clone the repo
-git clone https://github.com/vadzim/nt-manager.git
-cd nt-manager
+curl -fsSL https://raw.githubusercontent.com/vadzim/nt-manager/main/nt-install.sh | bash
+```
 
-# Make it executable and add to PATH
-chmod +x nt
-mkdir -p ~/.bin
-ln -s $(pwd)/nt ~/.bin/nt
-echo 'export PATH="$HOME/.bin:$PATH"' >> ~/.bashrc  # or ~/.zshrc
+Then add to your shell profile (if not already in PATH):
+
+```bash
+export PATH="$HOME/.local/nt/bin:$PATH"
 ```
 
 ## Usage
 
 ```bash
-# Install a package with latest Node.js
+# Install a tool (uses bootstrap LTS Node.js)
 nt install typescript
 
 # Install with specific Node.js version
@@ -50,24 +49,25 @@ nt remove typescript
 
 ## How it works
 
-1. **Bootstrap**: Downloads [n](https://github.com/tj/n) on first run (no Node.js needed!)
-2. **Node.js isolation**: Uses `n` to install Node.js versions in `~/.local/nt/node/<version>/`
+1. **Bootstrap**: Downloads LTS Node.js directly from nodejs.org (no system Node.js needed!)
+2. **Node.js isolation**: Uses bootstrap npm to install specific Node.js versions via `npm install node@X`
 3. **Package installation**: Installs npm packages in `~/.local/nt/tools/<package>/`
 4. **Wrapper scripts**: Creates executable wrappers in `~/.local/nt/bin/` that set up the correct Node.js version
+5. **Auto-updates**: Bootstrap Node.js checks for LTS updates daily
 
 ## Directory structure
 
 ```
 ~/.local/nt/
+├── .internal/
+│   └── node/           # Bootstrap Node.js (LTS, auto-updated)
 ├── bin/
-│   ├── n               # Node.js version manager (auto-downloaded)
 │   ├── tsc             # Executable wrappers
 │   ├── vite
 │   └── ng
-├── node/               # Isolated Node.js versions
+├── node/               # Isolated Node.js versions (via npm)
 │   ├── 18/
-│   ├── 20/
-│   └── latest/
+│   └── 20/
 └── tools/              # Installed packages
     ├── typescript/
     ├── vite/
@@ -78,34 +78,29 @@ nt remove typescript
 
 - Bash 4.0+
 - `curl` (for downloading Node.js and packages)
+- `tar` with xz support
 - Internet connection
 
 **No Node.js required!** `nt` will download and manage Node.js versions automatically.
 
-## Examples
+## Advanced Usage
 
 ```bash
-# Install TypeScript with Node 20
-nt install --node=20 typescript
+# Use custom installation directory
+nt install --home=/opt/myproject/nt typescript
 
-# Install multiple tools
-nt install vite
-nt install --node=18 webpack
-nt install prettier
+# Or set NT_HOME environment variable
+export NT_HOME=/opt/myproject/nt
+nt install typescript
+
+# Install with specific Node.js version
+nt install --node=20 typescript
 
 # Check what's installed
 nt list
 # Output:
-#   typescript  pkg: typescript@latest  node: 20
-#   vite        pkg: vite@latest        node: latest
-#   webpack     pkg: webpack@latest     node: 18
-#   prettier    pkg: prettier@latest    node: latest
-
-# Update everything
-nt update
-
-# Use custom installation directory
-NT_HOME=/opt/myproject/nt nt install typescript
+#   typescript  pkg: typescript@latest  node: bootstrap
+#   vite        pkg: vite@latest        node: 20
 ```
 
 ## Testing
@@ -117,7 +112,7 @@ cd tests
 ./test.bash
 ```
 
-See [tests/README.md](tests/README.md) for details.
+All 13 tests should pass. See [tests/README.md](tests/README.md) for details.
 
 ## License
 
