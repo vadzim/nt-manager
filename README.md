@@ -79,20 +79,9 @@ nt list
 #   vite        pkg: vite@latest        node: 20
 ```
 
-## Testing
-
-Run the test suite to verify everything works:
-
-```bash
-cd tests
-./test.bash
-```
-
-All 13 tests should pass. See [tests/README.md](tests/README.md) for details.
-
 ## Contributing
 
-For implementation details and architecture, see [IMPLEMENTATION.md](IMPLEMENTATION.md).
+For implementation details, architecture, and testing, see [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
 ## License
 

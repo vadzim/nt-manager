@@ -105,6 +105,17 @@ When executing a tool, the wrapper reads `.node-version` and sets `PATH` accordi
 
 ## Testing
 
-See [tests/README.md](tests/README.md) for test suite documentation.
+Run the test suite to verify everything works:
+
+```bash
+cd tests
+./test.bash
+```
+
+All 13 tests should pass. See [tests/README.md](tests/README.md) for details.
 
 All tests run in isolated temporary directories to avoid affecting the user's installation.
+
+## Contributing
+
+For implementation details and architecture, see [IMPLEMENTATION.md](IMPLEMENTATION.md).
