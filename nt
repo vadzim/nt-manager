@@ -87,11 +87,16 @@ __nt_ensure_node() {
 __nt_cleanup_wrappers() {
     local tool_dir="$1"
 
-    [[ ! -d "$NT_BIN" ]] && return
+    [[ ! -d "$NT_BIN" ]] && return 0
 
     for f in "$NT_BIN"/*; do
-        [[ -f "$f" ]] && grep -qF "$tool_dir" "$f" && rm -f "$f"
+        [[ ! -f "$f" ]] && continue
+        if grep -qF "$tool_dir" "$f" 2>/dev/null; then
+            rm -f "$f"
+        fi
     done
+    
+    return 0
 }
 
 __nt_create_wrappers() {
