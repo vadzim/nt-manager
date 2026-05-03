@@ -1,0 +1,251 @@
+#!/usr/bin/env fish
+
+set -g NT_HOME  $HOME/.local/nt
+set -g NT_NODES $NT_HOME/node
+set -g NT_TOOLS $NT_HOME/tools
+set -g NT_BIN   $NT_HOME/bin
+
+function __nt_parse_pkg_spec
+    set spec $argv[1]
+
+    if string match -q -- '@*' $spec
+        set without_at (string replace -r -- '^@' '' $spec)
+        set at_parts (string split '@' $without_at)
+        set pkg_name "@$at_parts[1]"
+        set pkg_ver  (test (count $at_parts) -ge 2; and echo $at_parts[2]; or echo "")
+        set dir_name (string replace '/' '__' $at_parts[1])
+    else
+        set parts (string split '@' $spec)
+        set pkg_name $parts[1]
+        set pkg_ver  (test (count $parts) -ge 2; and echo $parts[2]; or echo "")
+        set dir_name $pkg_name
+    end
+
+    echo $pkg_name
+    echo $pkg_ver
+    echo $dir_name
+end
+
+function __nt_ensure_node
+    set spec $argv[1]
+    set node_dir $NT_NODES/$spec
+
+    echo "→ updating node@$spec via n..."
+    mkdir -p $node_dir
+    N_PREFIX=$node_dir npx --yes n $spec
+
+    if not test -x $node_dir/bin/node
+        echo "nt: node installation failed"
+        rm -rf $node_dir
+        return 1
+    end
+
+    set -gx PATH $node_dir/bin $PATH
+
+    echo "✓ node@$spec ready"
+end
+
+function __nt_cleanup_wrappers
+    set tool_dir $argv[1]
+
+    if not test -d $NT_BIN
+        return
+    end
+
+    for f in $NT_BIN/*
+        if test -f $f; and grep -qF $tool_dir $f
+            rm -f $f
+        end
+    end
+end
+
+function __nt_create_wrappers
+    set node_dir    $argv[1]
+    set tool_dir    $argv[2]
+    set pkg_name    $argv[3]
+
+    set pkg_json $tool_dir/node_modules/$pkg_name/package.json
+    set count 0
+
+    if not test -f $pkg_json
+        echo "nt: warning — package.json not found at $pkg_json"
+        return
+    end
+
+    set bin_entries ($node_dir/bin/node -e "
+const p = require('$pkg_json');
+const b = p.bin;
+if (!b) process.exit(0);
+const obj = typeof b === 'string' ? {[p.name]: b} : b;
+Object.entries(obj).forEach(([n, v]) => console.log(n + '\t' + v));
+" 2>/dev/null)
+
+    mkdir -p $NT_BIN
+
+    for entry in $bin_entries
+        set parts   (string split \t $entry)
+        set bin_name $parts[1]
+        set bin_rel  $parts[2]
+        set bin_abs  $tool_dir/node_modules/$pkg_name/$bin_rel
+        set wrapper  $NT_BIN/$bin_name
+
+        printf '#!/usr/bin/env bash\n# nt-tool: %s\nexport PATH="%s/bin:$PATH"\nexec "%s" "$@"\n' \
+            $tool_dir \
+            $node_dir \
+            $bin_abs \
+            > $wrapper
+
+        chmod +x $wrapper
+        set count (math $count + 1)
+    end
+
+    echo $count
+end
+
+function __nt_install
+    set node_spec latest
+    set pkg_spec ""
+
+    for arg in $argv
+        if string match -qr -- '^--node=' $arg
+            set node_spec (string replace --regex -- '^--node=' '' $arg)
+        else if not string match -q -- '-*' $arg
+            set pkg_spec $arg
+        end
+    end
+
+    if test -z "$pkg_spec"
+        echo "Usage: nt install [--node=<version>] <package>[@version]"
+        return 1
+    end
+
+    set parsed (__nt_parse_pkg_spec $pkg_spec)
+    set pkg_name $parsed[1]
+    set pkg_ver  $parsed[2]
+    set dir_name $parsed[3]
+
+    if test -z "$pkg_ver"
+        set install_spec "$pkg_name@latest"
+    else
+        set install_spec "$pkg_name@$pkg_ver"
+    end
+
+    __nt_ensure_node $node_spec
+    or return 1
+
+    set node_dir $NT_NODES/$node_spec
+    set tool_dir $NT_TOOLS/$dir_name
+
+    if test -d $tool_dir
+        __nt_cleanup_wrappers $tool_dir
+        rm -rf $tool_dir
+    end
+
+    mkdir -p $tool_dir
+    echo $node_spec > $tool_dir/.node-version
+    echo $pkg_spec  > $tool_dir/.package-spec
+
+    echo "→ installing $install_spec..."
+
+    $node_dir/bin/npm install --prefix $tool_dir $install_spec
+    set npm_exit $status
+
+    if test $npm_exit -ne 0
+        echo "nt: npm install failed"
+        rm -rf $tool_dir
+        return 1
+    end
+
+    set count (__nt_create_wrappers $node_dir $tool_dir $pkg_name)
+
+    echo "✓ $install_spec installed — $count bin(s) in $NT_BIN"
+
+    if not contains -- $NT_BIN $PATH
+        echo "  ⚠  add to ~/.config/fish/config.fish:"
+        echo "     fish_add_path $NT_BIN"
+    end
+end
+
+function __nt_remove
+    set dir_name $argv[1]
+
+    if test -z "$dir_name"
+        echo "Usage: nt remove <package>"
+        return 1
+    end
+
+    set parsed (__nt_parse_pkg_spec $dir_name)
+    set dir_name $parsed[3]
+    set tool_dir $NT_TOOLS/$dir_name
+
+    if not test -d $tool_dir
+        echo "nt: $dir_name is not installed"
+        return 1
+    end
+
+    __nt_cleanup_wrappers $tool_dir
+    rm -rf $tool_dir
+
+    echo "✓ $dir_name removed"
+end
+
+function __nt_update
+    if not test -d $NT_TOOLS
+        echo "nothing installed"
+        return
+    end
+
+    set tools $NT_TOOLS/*/
+    if test (count $tools) -eq 0
+        echo "nothing installed"
+        return
+    end
+
+    for tool_dir in $tools
+        set dir_name  (basename $tool_dir)
+        set node_spec (cat $tool_dir/.node-version  2>/dev/null; or echo latest)
+        set pkg_spec  (cat $tool_dir/.package-spec  2>/dev/null; or echo $dir_name)
+
+        echo ""
+        echo "━━ $dir_name (node@$node_spec, pkg: $pkg_spec)"
+        __nt_install --node=$node_spec $pkg_spec
+    end
+end
+
+function __nt_list
+    if not test -d $NT_TOOLS
+        echo "nothing installed"
+        return
+    end
+    set tools $NT_TOOLS/*/
+    if test (count $tools) -eq 0
+        echo "nothing installed"
+        return
+    end
+    for tool_dir in $tools
+        set dir_name  (basename $tool_dir)
+        set node_spec (cat $tool_dir/.node-version 2>/dev/null; or echo "?")
+        set pkg_spec  (cat $tool_dir/.package-spec 2>/dev/null; or echo "?")
+        echo "  $dir_name  pkg: $pkg_spec  node: $node_spec"
+    end
+end
+
+switch $argv[1]
+    case install
+        __nt_install $argv[2..]
+    case remove rm
+        __nt_remove $argv[2..]
+    case update up
+        __nt_update
+    case list ls
+        __nt_list
+    case ''
+        echo "Usage:"
+        echo "  nt install [--node=<version>] <package>[@version]"
+        echo "  nt remove <package>"
+        echo "  nt update"
+        echo "  nt list"
+    case '*'
+        echo "nt: unknown command '$argv[1]'"
+        return 1
+end
