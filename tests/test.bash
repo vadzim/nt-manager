@@ -211,6 +211,18 @@ else
     fail "--force should reinstall"
 fi
 
+# Test 16: Install non-existent package (should fail and not create folder)
+test_header "Test 16: Install non-existent package (should fail and not create folder)"
+if ! "$NT_SCRIPT" install this-package-definitely-does-not-exist-12345 &>/dev/null; then
+    if [[ ! -d "$NT_HOME/tools/this-package-definitely-does-not-exist-12345" ]]; then
+        pass "non-existent package rejected, no folder created"
+    else
+        fail "folder created for non-existent package"
+    fi
+else
+    fail "non-existent package installation should fail"
+fi
+
 # Summary
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"

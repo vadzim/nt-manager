@@ -367,11 +367,20 @@ __nt_install() {
 
     echo "→ installing ${install_spec}..."
 
+    set +e
     "${node_dir}/bin/npm" install --prefix "$tool_dir" "$install_spec"
     local npm_exit=$?
+    set -e
 
     if [[ $npm_exit -ne 0 ]]; then
         echo "nt: npm install failed"
+        rm -rf "$tool_dir"
+        return 1
+    fi
+
+    # Check if package was actually installed
+    if [[ ! -d "${tool_dir}/node_modules" ]] || [[ -z "$(ls -A "${tool_dir}/node_modules" 2>/dev/null)" ]]; then
+        echo "nt: package not found or installation incomplete"
         rm -rf "$tool_dir"
         return 1
     fi
