@@ -54,6 +54,9 @@ nt list
 # Update all tools (keeps Node.js version pinning)
 nt update
 
+# Force reinstall all tools (even if up-to-date)
+nt update --force
+
 # Remove a tool
 nt remove typescript
 ```

@@ -342,7 +342,7 @@ __nt_install() {
 
     # Use specific Node version or bootstrap
     local node_dir
-    if [[ -n "$node_spec" ]]; then
+    if [[ -n "$node_spec" ]] && [[ "$node_spec" != "bootstrap" ]]; then
         __nt_ensure_node "$node_spec" || return 1
         node_dir="${NT_NODES}/${node_spec}"
     else
@@ -412,6 +412,12 @@ __nt_remove() {
 }
 
 __nt_update() {
+    local force=false
+    if [[ "${1:-}" == "--force" ]]; then
+        force=true
+        shift
+    fi
+
     if [[ ! -d "$NT_TOOLS" ]]; then
         echo "nothing installed"
         return
@@ -433,6 +439,48 @@ __nt_update() {
 
         echo ""
         echo "━━ ${dir_name} (node@${node_spec}, pkg: ${pkg_spec})"
+        
+        if [[ "$force" == "false" ]]; then
+            # Check if update is available
+            local parsed
+            readarray -t parsed < <(__nt_parse_pkg_spec "$pkg_spec")
+            local pkg_name="${parsed[0]}"
+            local pkg_version="${parsed[1]}"
+            
+            # Get installed version
+            local installed_version
+            if [[ -f "${tool_dir}/node_modules/${pkg_name}/package.json" ]]; then
+                installed_version=$(grep -oP '"version":\s*"\K[^"]+' "${tool_dir}/node_modules/${pkg_name}/package.json" | head -1)
+            else
+                installed_version="unknown"
+            fi
+            
+            # Get latest version from npm (use bootstrap node if needed)
+            if [[ "$node_spec" == "bootstrap" ]]; then
+                __nt_ensure_bootstrap_node
+                export PATH="${NT_INTERNAL}/node/bin:${PATH}"
+            else
+                __nt_ensure_node "$node_spec"
+            fi
+            
+            local latest_version
+            latest_version=$(npm view "${pkg_name}@${pkg_version}" version 2>/dev/null || echo "")
+            
+            if [[ -z "$latest_version" ]]; then
+                echo "→ cannot check version, skipping"
+                continue
+            fi
+            
+            if [[ "$installed_version" == "$latest_version" ]]; then
+                echo "→ already up-to-date (${installed_version})"
+                continue
+            fi
+            
+            echo "→ update available: ${installed_version} → ${latest_version}"
+        else
+            echo "→ forcing reinstall"
+        fi
+        
         __nt_install --node="$node_spec" "$pkg_spec"
     done
 }
@@ -470,7 +518,8 @@ case "${1:-}" in
         __nt_remove "$@"
         ;;
     update|up)
-        __nt_update
+        shift
+        __nt_update "$@"
         ;;
     list|ls)
         __nt_list
@@ -479,12 +528,13 @@ case "${1:-}" in
         echo "Usage:"
         echo "  nt install [--home=<dir>] [--node=<version>] <package>[@version]"
         echo "  nt remove <package>"
-        echo "  nt update"
+        echo "  nt update [--force]"
         echo "  nt list"
         echo ""
         echo "Options:"
         echo "  --home=<dir>     Installation directory (default: \$NT_HOME or ~/.local/nt)"
-        echo "  --node=<version> Node.js version (default: latest)"
+        echo "  --node=<version> Node.js version (default: latest LTS)"
+        echo "  --force          Force reinstall all packages (for update command)"
         ;;
     *)
         echo "nt: unknown command '$1'"

@@ -193,6 +193,24 @@ else
     fail "scoped package installation failed"
 fi
 
+# Test 14: Update without changes (should skip)
+test_header "Test 14: Update without changes (should skip)"
+output=$("$NT_SCRIPT" update 2>&1)
+if echo "$output" | grep -q "already up-to-date"; then
+    pass "update skipped when no updates available"
+else
+    fail "update should skip when up-to-date"
+fi
+
+# Test 15: Update with --force (should reinstall)
+test_header "Test 15: Update with --force (should reinstall)"
+output=$("$NT_SCRIPT" update --force 2>&1)
+if echo "$output" | grep -q "installing"; then
+    pass "--force reinstalls packages"
+else
+    fail "--force should reinstall"
+fi
+
 # Summary
 echo ""
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
