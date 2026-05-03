@@ -99,6 +99,40 @@ __nt_cleanup_wrappers() {
     return 0
 }
 
+__nt_recreate_all_wrappers() {
+    if [[ ! -d "$NT_TOOLS" ]]; then
+        return 0
+    fi
+
+    local tools=("$NT_TOOLS"/*)
+    if [[ ${#tools[@]} -eq 0 ]] || [[ ! -d "${tools[0]}" ]]; then
+        return 0
+    fi
+
+    for tool_dir in "${tools[@]}"; do
+        local dir_name
+        dir_name=$(basename "$tool_dir")
+        
+        local node_spec
+        node_spec=$(cat "${tool_dir}/.node-version" 2>/dev/null || echo "latest")
+        
+        local pkg_spec
+        pkg_spec=$(cat "${tool_dir}/.package-spec" 2>/dev/null || echo "$dir_name")
+        
+        local parsed
+        readarray -t parsed < <(__nt_parse_pkg_spec "$pkg_spec")
+        local pkg_name="${parsed[0]}"
+        
+        local node_dir="${NT_NODES}/${node_spec}"
+        
+        if [[ -x "${node_dir}/bin/node" ]]; then
+            __nt_create_wrappers "$node_dir" "$tool_dir" "$pkg_name" >/dev/null || true
+        fi
+    done
+    
+    return 0
+}
+
 __nt_create_wrappers() {
     local node_dir="$1"
     local tool_dir="$2"
@@ -233,6 +267,9 @@ __nt_remove() {
     rm -rf "$tool_dir"
 
     echo "✓ ${dir_name} removed"
+    
+    # Recreate all wrappers to resolve potential conflicts
+    __nt_recreate_all_wrappers
 }
 
 __nt_update() {
