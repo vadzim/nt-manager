@@ -26,13 +26,31 @@ function __nt_parse_pkg_spec
     echo $dir_name
 end
 
+function __nt_ensure_n
+    set n_bin $NT_HOME/bin/n
+    
+    if not test -x $n_bin
+        echo "→ downloading n (Node.js version manager)..."
+        mkdir -p $NT_HOME/bin
+        if not curl -fsSL https://raw.githubusercontent.com/tj/n/master/bin/n -o $n_bin
+            echo "nt: failed to download n"
+            return 1
+        end
+        chmod +x $n_bin
+        echo "✓ n installed"
+    end
+end
+
 function __nt_ensure_node
     set spec $argv[1]
     set node_dir $NT_NODES/$spec
 
+    __nt_ensure_n
+    or return 1
+
     echo "→ updating node@$spec via n..."
     mkdir -p $node_dir
-    N_PREFIX=$node_dir npx --yes n $spec
+    N_PREFIX=$node_dir $NT_HOME/bin/n $spec
 
     if not test -x $node_dir/bin/node
         echo "nt: node installation failed"

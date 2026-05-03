@@ -4,10 +4,11 @@ A lightweight Node.js package manager that isolates tools with their own Node.js
 
 ## Why?
 
+- **Zero dependencies**: No Node.js required on your system
 - **Isolated Node versions**: Each tool gets its own Node.js version
 - **No global pollution**: Tools are installed in `~/.local/nt/`
 - **Version pinning**: Lock tools to specific Node.js versions
-- **Simple**: Shell script (Fish or Bash), no dependencies
+- **Simple**: Shell script (Fish or Bash), downloads what it needs
 - **Cross-shell**: Works with Fish, Bash, and Zsh
 
 ## Installation
@@ -55,33 +56,37 @@ nt remove typescript
 
 ## How it works
 
-1. **Node.js isolation**: Uses [n](https://github.com/tj/n) to install Node.js versions in `~/.local/nt/node/<version>/`
-2. **Package installation**: Installs npm packages in `~/.local/nt/tools/<package>/`
-3. **Wrapper scripts**: Creates executable wrappers in `~/.local/nt/bin/` that set up the correct Node.js version
+1. **Bootstrap**: Downloads [n](https://github.com/tj/n) on first run (no Node.js needed!)
+2. **Node.js isolation**: Uses `n` to install Node.js versions in `~/.local/nt/node/<version>/`
+3. **Package installation**: Installs npm packages in `~/.local/nt/tools/<package>/`
+4. **Wrapper scripts**: Creates executable wrappers in `~/.local/nt/bin/` that set up the correct Node.js version
 
 ## Directory structure
 
 ```
 ~/.local/nt/
-├── node/           # Isolated Node.js versions
+├── bin/
+│   ├── n               # Node.js version manager (auto-downloaded)
+│   ├── tsc             # Executable wrappers
+│   ├── vite
+│   └── ng
+├── node/               # Isolated Node.js versions
 │   ├── 18/
 │   ├── 20/
 │   └── latest/
-├── tools/          # Installed packages
-│   ├── typescript/
-│   ├── vite/
-│   └── @angular__cli/
-└── bin/            # Executable wrappers
-    ├── tsc
-    ├── vite
-    └── ng
+└── tools/              # Installed packages
+    ├── typescript/
+    ├── vite/
+    └── @angular__cli/
 ```
 
 ## Requirements
 
 - Bash 4.0+ or Fish shell
-- `npx` (comes with Node.js)
-- Internet connection for initial setup
+- `curl` (for downloading Node.js and packages)
+- Internet connection
+
+**No Node.js required!** `nt` will download and manage Node.js versions automatically.
 
 ## Examples
 

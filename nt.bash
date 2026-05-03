@@ -38,13 +38,30 @@ __nt_parse_pkg_spec() {
     echo "$dir_name"
 }
 
+__nt_ensure_n() {
+    local n_bin="${NT_HOME}/bin/n"
+    
+    if [[ ! -x "$n_bin" ]]; then
+        echo "→ downloading n (Node.js version manager)..."
+        mkdir -p "${NT_HOME}/bin"
+        if ! curl -fsSL https://raw.githubusercontent.com/tj/n/master/bin/n -o "$n_bin"; then
+            echo "nt: failed to download n"
+            return 1
+        fi
+        chmod +x "$n_bin"
+        echo "✓ n installed"
+    fi
+}
+
 __nt_ensure_node() {
     local spec="$1"
     local node_dir="${NT_NODES}/${spec}"
 
+    __nt_ensure_n || return 1
+
     echo "→ updating node@${spec} via n..."
     mkdir -p "$node_dir"
-    N_PREFIX="$node_dir" npx --yes n "$spec"
+    N_PREFIX="$node_dir" "${NT_HOME}/bin/n" "$spec"
 
     if [[ ! -x "${node_dir}/bin/node" ]]; then
         echo "nt: node installation failed"
