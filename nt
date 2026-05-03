@@ -342,13 +342,13 @@ __nt_install() {
 
     # Use specific Node version or bootstrap
     local node_dir
-    if [[ -n "$node_spec" ]] && [[ "$node_spec" != "bootstrap" ]]; then
+    if [[ -n "$node_spec" ]] && [[ "$node_spec" != "lts" ]] && [[ "$node_spec" != "bootstrap" ]]; then
         __nt_ensure_node "$node_spec" || return 1
         node_dir="${NT_NODES}/${node_spec}"
     else
         __nt_ensure_bootstrap_node || return 1
         node_dir="${NT_INTERNAL}/node"
-        node_spec="bootstrap"
+        node_spec="lts"
     fi
 
     local tool_dir="${NT_TOOLS}/${dir_name}"
@@ -456,7 +456,7 @@ __nt_update() {
             fi
             
             # Get latest version from npm (use bootstrap node if needed)
-            if [[ "$node_spec" == "bootstrap" ]]; then
+            if [[ "$node_spec" == "lts" ]] || [[ "$node_spec" == "bootstrap" ]]; then
                 __nt_ensure_bootstrap_node
                 export PATH="${NT_INTERNAL}/node/bin:${PATH}"
             else
