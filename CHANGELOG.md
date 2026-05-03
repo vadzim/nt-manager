@@ -18,12 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Remove tools with `nt remove`
 - Automatic wrapper script generation for package binaries
 - Support for scoped packages (e.g., `@angular/cli`)
+- Zero dependencies: auto-downloads `n` on first run
+- `NT_HOME` environment variable for custom installation directory
+- Comprehensive test suite
 
 ### Features
 - Isolated Node.js versions per tool using `n`
-- Clean installation in `~/.local/nt/`
+- Clean installation in `~/.local/nt/` (or custom via `NT_HOME`)
 - No global npm pollution
 - Version pinning for both packages and Node.js
+- Works on systems without Node.js installed
 
 [Unreleased]: https://github.com/vadzim/nt-manager/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/vadzim/nt-manager/releases/tag/v1.0.0

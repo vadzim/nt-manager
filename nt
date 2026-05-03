@@ -1,269 +1,296 @@
-#!/usr/bin/env fish
+#!/usr/bin/env bash
 
-set -g NT_HOME  (test -n "$NT_HOME"; and echo $NT_HOME; or echo $HOME/.local/nt)
-set -g NT_NODES $NT_HOME/node
-set -g NT_TOOLS $NT_HOME/tools
-set -g NT_BIN   $NT_HOME/bin
+set -euo pipefail
 
-function __nt_parse_pkg_spec
-    set spec $argv[1]
+NT_HOME="${NT_HOME:-${HOME}/.local/nt}"
+NT_NODES="${NT_HOME}/node"
+NT_TOOLS="${NT_HOME}/tools"
+NT_BIN="${NT_HOME}/bin"
 
-    if string match -q -- '@*' $spec
-        set without_at (string replace -r -- '^@' '' $spec)
-        set at_parts (string split '@' $without_at)
-        set pkg_name "@$at_parts[1]"
-        set pkg_ver  (test (count $at_parts) -ge 2; and echo $at_parts[2]; or echo "")
-        set dir_name (string replace '/' '__' $at_parts[1])
+__nt_parse_pkg_spec() {
+    local spec="$1"
+    local pkg_name pkg_ver dir_name
+
+    if [[ "$spec" =~ ^@(.+)$ ]]; then
+        local without_at="${BASH_REMATCH[1]}"
+        if [[ "$without_at" =~ ^([^@]+)@(.+)$ ]]; then
+            pkg_name="@${BASH_REMATCH[1]}"
+            pkg_ver="${BASH_REMATCH[2]}"
+        else
+            pkg_name="@${without_at}"
+            pkg_ver=""
+        fi
+        dir_name="${pkg_name#@}"
+        dir_name="${dir_name//\//__}"
     else
-        set parts (string split '@' $spec)
-        set pkg_name $parts[1]
-        set pkg_ver  (test (count $parts) -ge 2; and echo $parts[2]; or echo "")
-        set dir_name $pkg_name
-    end
+        if [[ "$spec" =~ ^([^@]+)@(.+)$ ]]; then
+            pkg_name="${BASH_REMATCH[1]}"
+            pkg_ver="${BASH_REMATCH[2]}"
+        else
+            pkg_name="$spec"
+            pkg_ver=""
+        fi
+        dir_name="$pkg_name"
+    fi
 
-    echo $pkg_name
-    echo $pkg_ver
-    echo $dir_name
-end
+    echo "$pkg_name"
+    echo "$pkg_ver"
+    echo "$dir_name"
+}
 
-function __nt_ensure_n
-    set n_bin $NT_HOME/bin/n
+__nt_ensure_n() {
+    local n_bin="${NT_HOME}/bin/n"
     
-    if not test -x $n_bin
+    if [[ ! -x "$n_bin" ]]; then
         echo "→ downloading n (Node.js version manager)..."
-        mkdir -p $NT_HOME/bin
-        if not curl -fsSL https://raw.githubusercontent.com/tj/n/master/bin/n -o $n_bin
+        mkdir -p "${NT_HOME}/bin"
+        if ! curl -fsSL https://raw.githubusercontent.com/tj/n/master/bin/n -o "$n_bin"; then
             echo "nt: failed to download n"
             return 1
-        end
-        chmod +x $n_bin
+        fi
+        chmod +x "$n_bin"
         echo "✓ n installed"
-    end
-end
+    fi
+}
 
-function __nt_ensure_node
-    set spec $argv[1]
-    set node_dir $NT_NODES/$spec
+__nt_ensure_node() {
+    local spec="$1"
+    local node_dir="${NT_NODES}/${spec}"
 
-    __nt_ensure_n
-    or return 1
+    __nt_ensure_n || return 1
 
-    echo "→ updating node@$spec via n..."
-    mkdir -p $node_dir
-    N_PREFIX=$node_dir $NT_HOME/bin/n $spec
+    echo "→ updating node@${spec} via n..."
+    mkdir -p "$node_dir"
+    N_PREFIX="$node_dir" "${NT_HOME}/bin/n" "$spec"
 
-    if not test -x $node_dir/bin/node
+    if [[ ! -x "${node_dir}/bin/node" ]]; then
         echo "nt: node installation failed"
-        rm -rf $node_dir
+        rm -rf "$node_dir"
         return 1
-    end
+    fi
 
-    set -gx PATH $node_dir/bin $PATH
+    export PATH="${node_dir}/bin:${PATH}"
 
-    echo "✓ node@$spec ready"
-end
+    echo "✓ node@${spec} ready"
+}
 
-function __nt_cleanup_wrappers
-    set tool_dir $argv[1]
+__nt_cleanup_wrappers() {
+    local tool_dir="$1"
 
-    if not test -d $NT_BIN
-        return
-    end
+    [[ ! -d "$NT_BIN" ]] && return
 
-    for f in $NT_BIN/*
-        if test -f $f; and grep -qF $tool_dir $f
-            rm -f $f
-        end
-    end
-end
+    for f in "$NT_BIN"/*; do
+        [[ -f "$f" ]] && grep -qF "$tool_dir" "$f" && rm -f "$f"
+    done
+}
 
-function __nt_create_wrappers
-    set node_dir    $argv[1]
-    set tool_dir    $argv[2]
-    set pkg_name    $argv[3]
+__nt_create_wrappers() {
+    local node_dir="$1"
+    local tool_dir="$2"
+    local pkg_name="$3"
 
-    set pkg_json $tool_dir/node_modules/$pkg_name/package.json
-    set count 0
+    local pkg_json="${tool_dir}/node_modules/${pkg_name}/package.json"
+    local count=0
 
-    if not test -f $pkg_json
+    if [[ ! -f "$pkg_json" ]]; then
         echo "nt: warning — package.json not found at $pkg_json"
         return
-    end
+    fi
 
-    set bin_entries ($node_dir/bin/node -e "
-const p = require('$pkg_json');
+    local bin_entries
+    bin_entries=$("${node_dir}/bin/node" -e "
+const p = require('${pkg_json}');
 const b = p.bin;
 if (!b) process.exit(0);
 const obj = typeof b === 'string' ? {[p.name]: b} : b;
 Object.entries(obj).forEach(([n, v]) => console.log(n + '\t' + v));
-" 2>/dev/null)
+" 2>/dev/null || true)
 
-    mkdir -p $NT_BIN
+    mkdir -p "$NT_BIN"
 
-    for entry in $bin_entries
-        set parts   (string split \t $entry)
-        set bin_name $parts[1]
-        set bin_rel  $parts[2]
-        set bin_abs  $tool_dir/node_modules/$pkg_name/$bin_rel
-        set wrapper  $NT_BIN/$bin_name
+    while IFS=$'\t' read -r bin_name bin_rel; do
+        [[ -z "$bin_name" ]] && continue
 
-        printf '#!/usr/bin/env bash\n# nt-tool: %s\nexport PATH="%s/bin:$PATH"\nexec "%s" "$@"\n' \
-            $tool_dir \
-            $node_dir \
-            $bin_abs \
-            > $wrapper
+        local bin_abs="${tool_dir}/node_modules/${pkg_name}/${bin_rel}"
+        local wrapper="${NT_BIN}/${bin_name}"
 
-        chmod +x $wrapper
-        set count (math $count + 1)
-    end
+        cat > "$wrapper" <<EOF
+#!/usr/bin/env bash
+# nt-tool: ${tool_dir}
+export PATH="${node_dir}/bin:\$PATH"
+exec "${bin_abs}" "\$@"
+EOF
 
-    echo $count
-end
+        chmod +x "$wrapper"
+        ((count++))
+    done <<< "$bin_entries"
 
-function __nt_install
-    set node_spec latest
-    set pkg_spec ""
+    echo "$count"
+}
 
-    for arg in $argv
-        if string match -qr -- '^--node=' $arg
-            set node_spec (string replace --regex -- '^--node=' '' $arg)
-        else if not string match -q -- '-*' $arg
-            set pkg_spec $arg
-        end
-    end
+__nt_install() {
+    local node_spec="latest"
+    local pkg_spec=""
 
-    if test -z "$pkg_spec"
+    for arg in "$@"; do
+        if [[ "$arg" =~ ^--node=(.+)$ ]]; then
+            node_spec="${BASH_REMATCH[1]}"
+        elif [[ ! "$arg" =~ ^- ]]; then
+            pkg_spec="$arg"
+        fi
+    done
+
+    if [[ -z "$pkg_spec" ]]; then
         echo "Usage: nt install [--node=<version>] <package>[@version]"
         return 1
-    end
+    fi
 
-    set parsed (__nt_parse_pkg_spec $pkg_spec)
-    set pkg_name $parsed[1]
-    set pkg_ver  $parsed[2]
-    set dir_name $parsed[3]
+    local parsed
+    readarray -t parsed < <(__nt_parse_pkg_spec "$pkg_spec")
+    local pkg_name="${parsed[0]}"
+    local pkg_ver="${parsed[1]}"
+    local dir_name="${parsed[2]}"
 
-    if test -z "$pkg_ver"
-        set install_spec "$pkg_name@latest"
+    local install_spec
+    if [[ -z "$pkg_ver" ]]; then
+        install_spec="${pkg_name}@latest"
     else
-        set install_spec "$pkg_name@$pkg_ver"
-    end
+        install_spec="${pkg_name}@${pkg_ver}"
+    fi
 
-    __nt_ensure_node $node_spec
-    or return 1
+    __nt_ensure_node "$node_spec" || return 1
 
-    set node_dir $NT_NODES/$node_spec
-    set tool_dir $NT_TOOLS/$dir_name
+    local node_dir="${NT_NODES}/${node_spec}"
+    local tool_dir="${NT_TOOLS}/${dir_name}"
 
-    if test -d $tool_dir
-        __nt_cleanup_wrappers $tool_dir
-        rm -rf $tool_dir
-    end
+    if [[ -d "$tool_dir" ]]; then
+        __nt_cleanup_wrappers "$tool_dir"
+        rm -rf "$tool_dir"
+    fi
 
-    mkdir -p $tool_dir
-    echo $node_spec > $tool_dir/.node-version
-    echo $pkg_spec  > $tool_dir/.package-spec
+    mkdir -p "$tool_dir"
+    echo "$node_spec" > "${tool_dir}/.node-version"
+    echo "$pkg_spec" > "${tool_dir}/.package-spec"
 
-    echo "→ installing $install_spec..."
+    echo "→ installing ${install_spec}..."
 
-    $node_dir/bin/npm install --prefix $tool_dir $install_spec
-    set npm_exit $status
+    "${node_dir}/bin/npm" install --prefix "$tool_dir" "$install_spec"
+    local npm_exit=$?
 
-    if test $npm_exit -ne 0
+    if [[ $npm_exit -ne 0 ]]; then
         echo "nt: npm install failed"
-        rm -rf $tool_dir
+        rm -rf "$tool_dir"
         return 1
-    end
+    fi
 
-    set count (__nt_create_wrappers $node_dir $tool_dir $pkg_name)
+    local count
+    count=$(__nt_create_wrappers "$node_dir" "$tool_dir" "$pkg_name")
 
-    echo "✓ $install_spec installed — $count bin(s) in $NT_BIN"
+    echo "✓ ${install_spec} installed — ${count} bin(s) in ${NT_BIN}"
 
-    if not contains -- $NT_BIN $PATH
-        echo "  ⚠  add to ~/.config/fish/config.fish:"
-        echo "     fish_add_path $NT_BIN"
-    end
-end
+    if [[ ":$PATH:" != *":${NT_BIN}:"* ]]; then
+        echo "  ⚠  add to ~/.bashrc or ~/.zshrc:"
+        echo "     export PATH=\"${NT_BIN}:\$PATH\""
+    fi
+}
 
-function __nt_remove
-    set dir_name $argv[1]
+__nt_remove() {
+    local dir_name="$1"
 
-    if test -z "$dir_name"
+    if [[ -z "$dir_name" ]]; then
         echo "Usage: nt remove <package>"
         return 1
-    end
+    fi
 
-    set parsed (__nt_parse_pkg_spec $dir_name)
-    set dir_name $parsed[3]
-    set tool_dir $NT_TOOLS/$dir_name
+    local parsed
+    readarray -t parsed < <(__nt_parse_pkg_spec "$dir_name")
+    dir_name="${parsed[2]}"
+    local tool_dir="${NT_TOOLS}/${dir_name}"
 
-    if not test -d $tool_dir
-        echo "nt: $dir_name is not installed"
+    if [[ ! -d "$tool_dir" ]]; then
+        echo "nt: ${dir_name} is not installed"
         return 1
-    end
+    fi
 
-    __nt_cleanup_wrappers $tool_dir
-    rm -rf $tool_dir
+    __nt_cleanup_wrappers "$tool_dir"
+    rm -rf "$tool_dir"
 
-    echo "✓ $dir_name removed"
-end
+    echo "✓ ${dir_name} removed"
+}
 
-function __nt_update
-    if not test -d $NT_TOOLS
+__nt_update() {
+    if [[ ! -d "$NT_TOOLS" ]]; then
         echo "nothing installed"
         return
-    end
+    fi
 
-    set tools $NT_TOOLS/*/
-    if test (count $tools) -eq 0
+    local tools=("$NT_TOOLS"/*/)
+    if [[ ${#tools[@]} -eq 0 ]] || [[ ! -d "${tools[0]}" ]]; then
         echo "nothing installed"
         return
-    end
+    fi
 
-    for tool_dir in $tools
-        set dir_name  (basename $tool_dir)
-        set node_spec (cat $tool_dir/.node-version  2>/dev/null; or echo latest)
-        set pkg_spec  (cat $tool_dir/.package-spec  2>/dev/null; or echo $dir_name)
+    for tool_dir in "${tools[@]}"; do
+        local dir_name
+        dir_name=$(basename "$tool_dir")
+        local node_spec
+        node_spec=$(cat "${tool_dir}/.node-version" 2>/dev/null || echo "latest")
+        local pkg_spec
+        pkg_spec=$(cat "${tool_dir}/.package-spec" 2>/dev/null || echo "$dir_name")
 
         echo ""
-        echo "━━ $dir_name (node@$node_spec, pkg: $pkg_spec)"
-        __nt_install --node=$node_spec $pkg_spec
-    end
-end
+        echo "━━ ${dir_name} (node@${node_spec}, pkg: ${pkg_spec})"
+        __nt_install --node="$node_spec" "$pkg_spec"
+    done
+}
 
-function __nt_list
-    if not test -d $NT_TOOLS
+__nt_list() {
+    if [[ ! -d "$NT_TOOLS" ]]; then
         echo "nothing installed"
         return
-    end
-    set tools $NT_TOOLS/*/
-    if test (count $tools) -eq 0
+    fi
+
+    local tools=("$NT_TOOLS"/*/)
+    if [[ ${#tools[@]} -eq 0 ]] || [[ ! -d "${tools[0]}" ]]; then
         echo "nothing installed"
         return
-    end
-    for tool_dir in $tools
-        set dir_name  (basename $tool_dir)
-        set node_spec (cat $tool_dir/.node-version 2>/dev/null; or echo "?")
-        set pkg_spec  (cat $tool_dir/.package-spec 2>/dev/null; or echo "?")
-        echo "  $dir_name  pkg: $pkg_spec  node: $node_spec"
-    end
-end
+    fi
 
-switch $argv[1]
-    case install
-        __nt_install $argv[2..]
-    case remove rm
-        __nt_remove $argv[2..]
-    case update up
+    for tool_dir in "${tools[@]}"; do
+        local dir_name
+        dir_name=$(basename "$tool_dir")
+        local node_spec
+        node_spec=$(cat "${tool_dir}/.node-version" 2>/dev/null || echo "?")
+        local pkg_spec
+        pkg_spec=$(cat "${tool_dir}/.package-spec" 2>/dev/null || echo "?")
+        echo "  ${dir_name}  pkg: ${pkg_spec}  node: ${node_spec}"
+    done
+}
+
+case "${1:-}" in
+    install)
+        shift
+        __nt_install "$@"
+        ;;
+    remove|rm)
+        shift
+        __nt_remove "$@"
+        ;;
+    update|up)
         __nt_update
-    case list ls
+        ;;
+    list|ls)
         __nt_list
-    case ''
+        ;;
+    "")
         echo "Usage:"
         echo "  nt install [--node=<version>] <package>[@version]"
         echo "  nt remove <package>"
         echo "  nt update"
         echo "  nt list"
-    case '*'
-        echo "nt: unknown command '$argv[1]'"
-        return 1
-end
+        ;;
+    *)
+        echo "nt: unknown command '$1'"
+        exit 1
+        ;;
+esac

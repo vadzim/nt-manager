@@ -4,16 +4,9 @@ Automated test suite for nt-manager.
 
 ## Running tests
 
-### Bash version
 ```bash
 cd tests
 ./test.bash
-```
-
-### Fish version
-```bash
-cd tests
-./test.fish
 ```
 
 ## What is tested
@@ -48,9 +41,6 @@ Each test run uses a temporary directory via `NT_HOME` environment variable:
 Tests can be run in CI environments:
 ```bash
 # GitHub Actions example
-- name: Run tests (Bash)
+- name: Run tests
   run: ./tests/test.bash
-
-- name: Run tests (Fish)
-  run: ./tests/test.fish
 ```
