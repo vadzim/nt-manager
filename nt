@@ -441,7 +441,7 @@ __nt_update() {
         pkg_spec=$(cat "${tool_dir}/.package-spec" 2>/dev/null || echo "$dir_name")
 
         echo ""
-        echo "━━ ${dir_name} (node@${node_spec:-internal}, pkg: ${pkg_spec})"
+        echo "━━ ${pkg_spec} (node@${node_spec:-internal})"
         
         if [[ "$force" == "false" ]]; then
             # Check if update is available
@@ -511,7 +511,7 @@ __nt_list() {
         node_spec=$(cat "${tool_dir}/.node-version" 2>/dev/null || echo "")
         local pkg_spec
         pkg_spec=$(cat "${tool_dir}/.package-spec" 2>/dev/null || echo "?")
-        echo "  ${dir_name}  pkg: ${pkg_spec}  node: ${node_spec:-internal}"
+        echo "  ${pkg_spec} (node@${node_spec:-internal})"
     done
 }
 
