@@ -15,7 +15,7 @@ NT_HOME="${NT_HOME_OVERRIDE:-${NT_HOME:-${HOME}/.local/nt}}"
 NT_NODES="${NT_HOME}/node"
 NT_TOOLS="${NT_HOME}/tools"
 NT_BIN="${NT_HOME}/bin"
-NT_INTERNAL="${NT_HOME}/.internal/bin"
+NT_INTERNAL="${NT_HOME}/.internal"
 
 __nt_parse_pkg_spec() {
     local spec="$1"
@@ -48,40 +48,156 @@ __nt_parse_pkg_spec() {
     echo "$dir_name"
 }
 
-__nt_ensure_n() {
-    local n_bin="${NT_INTERNAL}/n"
+__nt_ensure_bootstrap_node() {
+    local bootstrap_node="${NT_INTERNAL}/node"
+    local bootstrap_bin="${bootstrap_node}/bin/node"
     
-    if [[ ! -x "$n_bin" ]]; then
-        echo "→ downloading n (Node.js version manager)..."
-        mkdir -p "${NT_INTERNAL}"
-        if ! curl -fsSL https://raw.githubusercontent.com/tj/n/master/bin/n -o "$n_bin"; then
-            echo "nt: failed to download n"
+    # Check if we need to update (check once per day)
+    local update_marker="${bootstrap_node}/.last_check"
+    local should_update=false
+    
+    if [[ ! -x "$bootstrap_bin" ]]; then
+        should_update=true
+    elif [[ -f "$update_marker" ]]; then
+        local last_check
+        last_check=$(cat "$update_marker" 2>/dev/null || echo "0")
+        local now
+        now=$(date +%s)
+        local day_ago=$((now - 86400))
+        
+        if [[ "$last_check" -lt "$day_ago" ]]; then
+            should_update=true
+        fi
+    else
+        should_update=true
+    fi
+    
+    if [[ "$should_update" == "true" ]]; then
+        echo "→ checking for LTS Node.js updates..."
+        
+        # Get latest LTS version
+        local lts_version
+        lts_version=$(curl -fsSL "https://nodejs.org/dist/index.json" | grep -oP '"version":"v\K[^"]+' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+        
+        if [[ -z "$lts_version" ]]; then
+            if [[ -x "$bootstrap_bin" ]]; then
+                echo "  (using existing bootstrap node)"
+                export PATH="${bootstrap_node}/bin:${PATH}"
+                return 0
+            fi
+            echo "nt: failed to resolve LTS version"
             return 1
         fi
-        chmod +x "$n_bin"
-        echo "✓ n installed"
+        
+        # Check if already installed
+        local current_version=""
+        if [[ -x "$bootstrap_bin" ]]; then
+            current_version=$("$bootstrap_bin" --version 2>/dev/null | sed 's/^v//')
+        fi
+        
+        if [[ "$current_version" == "$lts_version" ]]; then
+            echo "  ✓ bootstrap node@${lts_version} (up to date)"
+            date +%s > "$update_marker"
+            export PATH="${bootstrap_node}/bin:${PATH}"
+            return 0
+        fi
+        
+        # Download and install
+        local os arch
+        os=$(uname -s | tr '[:upper:]' '[:lower:]')
+        arch=$(uname -m)
+        
+        case "$arch" in
+            x86_64) arch="x64" ;;
+            aarch64|arm64) arch="arm64" ;;
+            armv7l) arch="armv7l" ;;
+            *) echo "nt: unsupported architecture: $arch"; return 1 ;;
+        esac
+        
+        case "$os" in
+            linux|darwin) ;;
+            *) echo "nt: unsupported OS: $os"; return 1 ;;
+        esac
+        
+        local node_tarball="node-v${lts_version}-${os}-${arch}.tar.xz"
+        local node_url="https://nodejs.org/dist/v${lts_version}/${node_tarball}"
+        
+        echo "→ downloading bootstrap node@${lts_version}..."
+        
+        local temp_dir
+        temp_dir=$(mktemp -d)
+        
+        if ! curl -fsSL "$node_url" | tar -xJ -C "$temp_dir" --strip-components=1; then
+            echo "nt: failed to download or extract bootstrap Node.js"
+            rm -rf "$temp_dir"
+            return 1
+        fi
+        
+        rm -rf "$bootstrap_node"
+        mkdir -p "${NT_INTERNAL}"
+        mv "$temp_dir" "$bootstrap_node" || {
+            echo "nt: failed to move bootstrap node"
+            rm -rf "$temp_dir"
+            return 1
+        }
+        
+        # Verify installation
+        if [[ ! -x "${bootstrap_node}/bin/node" ]]; then
+            echo "nt: bootstrap node installation incomplete"
+            rm -rf "$bootstrap_node"
+            return 1
+        fi
+        
+        date +%s > "$update_marker"
+        
+        echo "  ✓ bootstrap node@${lts_version} installed"
     fi
+    
+    export PATH="${bootstrap_node}/bin:${PATH}"
 }
 
 __nt_ensure_node() {
     local spec="$1"
     local node_dir="${NT_NODES}/${spec}"
 
-    __nt_ensure_n || return 1
+    # If specific version requested, use npm to install it
+    __nt_ensure_bootstrap_node || return 1
+    
+    if [[ -x "${node_dir}/bin/node" ]]; then
+        export PATH="${node_dir}/bin:${PATH}"
+        return 0
+    fi
 
-    echo "→ updating node@${spec} via n..."
+    echo "→ installing node@${spec} via npm..."
+    
     mkdir -p "$node_dir"
-    N_PREFIX="$node_dir" "${NT_INTERNAL}/n" "$spec"
-
-    if [[ ! -x "${node_dir}/bin/node" ]]; then
-        echo "nt: node installation failed"
+    
+    if ! npm install --prefix "$node_dir" "node@${spec}" "npm@latest" --no-save --no-package-lock; then
+        echo "nt: failed to install node@${spec}"
         rm -rf "$node_dir"
         return 1
     fi
+    
+    # npm installs binaries in node_modules/.bin/
+    local installed_node="${node_dir}/node_modules/.bin/node"
+    
+    if [[ ! -x "$installed_node" ]]; then
+        echo "nt: node@${spec} installation incomplete"
+        rm -rf "$node_dir"
+        return 1
+    fi
+    
+    # Create bin directory and symlink
+    mkdir -p "${node_dir}/bin"
+    ln -sf "../node_modules/.bin/node" "${node_dir}/bin/node"
+    ln -sf "../node_modules/.bin/npm" "${node_dir}/bin/npm"
+    ln -sf "../node_modules/.bin/npx" "${node_dir}/bin/npx" 2>/dev/null || true
 
     export PATH="${node_dir}/bin:${PATH}"
 
-    echo "✓ node@${spec} ready"
+    local actual_version
+    actual_version=$("${node_dir}/bin/node" --version 2>/dev/null | sed 's/^v//')
+    echo "  ✓ node@${actual_version} ready"
 }
 
 __nt_cleanup_wrappers() {
@@ -114,7 +230,7 @@ __nt_recreate_all_wrappers() {
         dir_name=$(basename "$tool_dir")
         
         local node_spec
-        node_spec=$(cat "${tool_dir}/.node-version" 2>/dev/null || echo "latest")
+        node_spec=$(cat "${tool_dir}/.node-version" 2>/dev/null || echo "bootstrap")
         
         local pkg_spec
         pkg_spec=$(cat "${tool_dir}/.package-spec" 2>/dev/null || echo "$dir_name")
@@ -123,7 +239,12 @@ __nt_recreate_all_wrappers() {
         readarray -t parsed < <(__nt_parse_pkg_spec "$pkg_spec")
         local pkg_name="${parsed[0]}"
         
-        local node_dir="${NT_NODES}/${node_spec}"
+        local node_dir
+        if [[ "$node_spec" == "bootstrap" ]]; then
+            node_dir="${NT_INTERNAL}/node"
+        else
+            node_dir="${NT_NODES}/${node_spec}"
+        fi
         
         if [[ -x "${node_dir}/bin/node" ]]; then
             __nt_create_wrappers "$node_dir" "$tool_dir" "$pkg_name" >/dev/null || true
@@ -178,7 +299,7 @@ EOF
 }
 
 __nt_install() {
-    local node_spec="latest"
+    local node_spec=""
     local pkg_spec=""
 
     for arg in "$@"; do
@@ -209,9 +330,17 @@ __nt_install() {
         install_spec="${pkg_name}@${pkg_ver}"
     fi
 
-    __nt_ensure_node "$node_spec" || return 1
+    # Use specific Node version or bootstrap
+    local node_dir
+    if [[ -n "$node_spec" ]]; then
+        __nt_ensure_node "$node_spec" || return 1
+        node_dir="${NT_NODES}/${node_spec}"
+    else
+        __nt_ensure_bootstrap_node || return 1
+        node_dir="${NT_INTERNAL}/node"
+        node_spec="bootstrap"
+    fi
 
-    local node_dir="${NT_NODES}/${node_spec}"
     local tool_dir="${NT_TOOLS}/${dir_name}"
 
     if [[ -d "$tool_dir" ]]; then

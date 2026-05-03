@@ -92,7 +92,7 @@ else
     fail "installation with --home and --node failed"
 fi
 
-# Test 4: Install cowsay with default Node version
+# Test 4: Install cowsay (small, popular package with binary)
 test_header "Test 4: Install cowsay (small, popular package with binary)"
 if "$NT_SCRIPT" install cowsay &>/dev/null; then
     if [[ -d "$NT_HOME/tools/cowsay" ]]; then
@@ -104,7 +104,7 @@ else
     fail "cowsay installation failed"
 fi
 
-# Test 5: Check if wrapper was created
+# Test 5: Check if cowsay binary wrapper exists
 test_header "Test 5: Check if cowsay binary wrapper exists"
 if [[ -x "$NT_HOME/bin/cowsay" ]]; then
     pass "cowsay wrapper created"
@@ -120,12 +120,12 @@ else
     fail "cowsay not in list"
 fi
 
-# Test 7: Check Node.js was installed
-test_header "Test 7: Check Node.js installation"
-if [[ -d "$NT_HOME/node/latest" ]] && [[ -x "$NT_HOME/node/latest/bin/node" ]]; then
-    pass "Node.js installed"
+# Test 7: Check bootstrap Node.js installation
+test_header "Test 7: Check bootstrap Node.js installation"
+if [[ -d "$NT_HOME/.internal/node" ]] && [[ -x "$NT_HOME/.internal/node/bin/node" ]]; then
+    pass "Bootstrap Node.js installed"
 else
-    fail "Node.js not found"
+    fail "Bootstrap Node.js not found"
 fi
 
 # Test 8: Install package with specific Node version
@@ -191,14 +191,6 @@ if "$NT_SCRIPT" install @sindresorhus/is &>/dev/null; then
     fi
 else
     fail "scoped package installation failed"
-fi
-
-# Test 14: Check n was downloaded
-test_header "Test 14: Check 'n' was auto-downloaded"
-if [[ -x "$NT_HOME/.internal/bin/n" ]]; then
-    pass "'n' binary exists in internal directory"
-else
-    fail "'n' binary not found"
 fi
 
 # Summary
