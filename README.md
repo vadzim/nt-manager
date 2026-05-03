@@ -24,21 +24,21 @@ export PATH="$HOME/.local/nt/bin:$PATH"
 ## Usage
 
 ```bash
-# Install a tool (uses bootstrap LTS Node.js, auto-updates)
+# Install a tool (pinned to bootstrap LTS Node.js)
 nt install typescript
 
 # Pin a tool to specific Node.js version
-nt install --node=18 vite
-nt install --node=20 @angular/cli
+nt install --node=18 vite        # vite pinned to Node.js 18
+nt install --node=20 @angular/cli # @angular/cli pinned to Node.js 20
 
-# Install specific package version
-nt install typescript@5.0.0
-nt install --node=18 vite@4.0.0
+# Install specific package version (still pinned to Node.js version)
+nt install typescript@5.0.0           # typescript@5.0.0 pinned to bootstrap LTS
+nt install --node=18 vite@4.0.0       # vite@4.0.0 pinned to Node.js 18
 
 # List installed tools
 nt list
 
-# Update all tools
+# Update all tools (keeps Node.js version pinning)
 nt update
 
 # Remove a tool
