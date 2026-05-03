@@ -50,32 +50,6 @@ nt remove typescript
 - Tools without `--node` use the latest LTS
 - Use `nvm use` or `fnm use` for development — your global tools won't break
 
-## How it works
-
-1. Downloads LTS Node.js directly from nodejs.org (no system Node.js needed!)
-2. Uses npm to install specific Node.js versions via `npm install node@X`
-3. Installs npm packages in `~/.local/nt/tools/<package>/`
-4. Creates executable wrappers in `~/.local/nt/bin/` that set up the correct Node.js version
-
-## Directory structure
-
-```
-~/.local/nt/
-├── .internal/
-│   └── node/           # LTS Node.js (auto-updated)
-├── bin/
-│   ├── tsc             # Executable wrappers
-│   ├── vite
-│   └── ng
-├── node/               # Isolated Node.js versions (via npm)
-│   ├── 18/
-│   └── 20/
-└── tools/              # Installed packages
-    ├── typescript/
-    ├── vite/
-    └── @angular__cli/
-```
-
 ## Requirements
 
 - Bash 4.0+
@@ -115,6 +89,10 @@ cd tests
 ```
 
 All 13 tests should pass. See [tests/README.md](tests/README.md) for details.
+
+## Contributing
+
+For implementation details and architecture, see [IMPLEMENTATION.md](IMPLEMENTATION.md).
 
 ## License
 
