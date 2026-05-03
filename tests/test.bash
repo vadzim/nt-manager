@@ -195,8 +195,8 @@ fi
 
 # Test 14: Check n was downloaded
 test_header "Test 14: Check 'n' was auto-downloaded"
-if [[ -x "$NT_HOME/bin/n" ]]; then
-    pass "'n' binary exists"
+if [[ -x "$NT_HOME/.internal/bin/n" ]]; then
+    pass "'n' binary exists in internal directory"
 else
     fail "'n' binary not found"
 fi

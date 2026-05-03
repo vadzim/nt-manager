@@ -15,6 +15,7 @@ NT_HOME="${NT_HOME_OVERRIDE:-${NT_HOME:-${HOME}/.local/nt}}"
 NT_NODES="${NT_HOME}/node"
 NT_TOOLS="${NT_HOME}/tools"
 NT_BIN="${NT_HOME}/bin"
+NT_INTERNAL="${NT_HOME}/.internal/bin"
 
 __nt_parse_pkg_spec() {
     local spec="$1"
@@ -48,11 +49,11 @@ __nt_parse_pkg_spec() {
 }
 
 __nt_ensure_n() {
-    local n_bin="${NT_HOME}/bin/n"
+    local n_bin="${NT_INTERNAL}/n"
     
     if [[ ! -x "$n_bin" ]]; then
         echo "→ downloading n (Node.js version manager)..."
-        mkdir -p "${NT_HOME}/bin"
+        mkdir -p "${NT_INTERNAL}"
         if ! curl -fsSL https://raw.githubusercontent.com/tj/n/master/bin/n -o "$n_bin"; then
             echo "nt: failed to download n"
             return 1
@@ -70,7 +71,7 @@ __nt_ensure_node() {
 
     echo "→ updating node@${spec} via n..."
     mkdir -p "$node_dir"
-    N_PREFIX="$node_dir" "${NT_HOME}/bin/n" "$spec"
+    N_PREFIX="$node_dir" "${NT_INTERNAL}/n" "$spec"
 
     if [[ ! -x "${node_dir}/bin/node" ]]; then
         echo "nt: node installation failed"
