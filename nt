@@ -87,7 +87,7 @@ __nt_ensure_bootstrap_node() {
         
         # Get latest LTS version
         local lts_version
-        lts_version=$($DOWNLOAD_CMD "https://nodejs.org/dist/index.json" | grep -oP '"version":"v\K[^"]+' | grep -E '^[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+        lts_version=$($DOWNLOAD_CMD "https://nodejs.org/dist/index.json" | grep -oP '\{"version":"v\K[0-9]+\.[0-9]+\.[0-9]+(?=.*"lts":"[^f])' | head -1)
         
         if [[ -z "$lts_version" ]]; then
             if [[ -x "$bootstrap_bin" ]]; then
