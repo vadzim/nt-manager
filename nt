@@ -2,7 +2,16 @@
 
 set -euo pipefail
 
-NT_HOME="${NT_HOME:-${HOME}/.local/nt}"
+# Parse --home option first
+NT_HOME_OVERRIDE=""
+for arg in "$@"; do
+    if [[ "$arg" =~ ^--home=(.+)$ ]]; then
+        NT_HOME_OVERRIDE="${BASH_REMATCH[1]}"
+        break
+    fi
+done
+
+NT_HOME="${NT_HOME_OVERRIDE:-${NT_HOME:-${HOME}/.local/nt}}"
 NT_NODES="${NT_HOME}/node"
 NT_TOOLS="${NT_HOME}/tools"
 NT_BIN="${NT_HOME}/bin"
@@ -135,13 +144,15 @@ __nt_install() {
     for arg in "$@"; do
         if [[ "$arg" =~ ^--node=(.+)$ ]]; then
             node_spec="${BASH_REMATCH[1]}"
+        elif [[ "$arg" =~ ^--home=(.+)$ ]]; then
+            : # already parsed at top level
         elif [[ ! "$arg" =~ ^- ]]; then
             pkg_spec="$arg"
         fi
     done
 
     if [[ -z "$pkg_spec" ]]; then
-        echo "Usage: nt install [--node=<version>] <package>[@version]"
+        echo "Usage: nt install [--home=<dir>] [--node=<version>] <package>[@version]"
         return 1
     fi
 
@@ -284,10 +295,14 @@ case "${1:-}" in
         ;;
     "")
         echo "Usage:"
-        echo "  nt install [--node=<version>] <package>[@version]"
+        echo "  nt install [--home=<dir>] [--node=<version>] <package>[@version]"
         echo "  nt remove <package>"
         echo "  nt update"
         echo "  nt list"
+        echo ""
+        echo "Options:"
+        echo "  --home=<dir>     Installation directory (default: \$NT_HOME or ~/.local/nt)"
+        echo "  --node=<version> Node.js version (default: latest)"
         ;;
     *)
         echo "nt: unknown command '$1'"
